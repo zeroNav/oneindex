@@ -48,7 +48,7 @@ class IndexController{
 		list($password) = explode("\n",$password);
 		$password = trim($password);
 		unset($this->items['.password']);
-		if(!empty($password) && strcmp($password, $_COOKIE[md5($this->path)]) === 0){
+		if(!empty($password) && $password == $_COOKIE[md5($this->path)]){
 			return true;
 		}
 
@@ -57,7 +57,7 @@ class IndexController{
 	}
 
 	function password($password){
-		if(!empty($_POST['password']) && strcmp($password, $_POST['password']) === 0){
+		if(!empty($_POST['password']) && $password == $_POST['password']){
 			setcookie(md5($this->path), $_POST['password']);
 			return true;
 		}
@@ -160,9 +160,16 @@ class IndexController{
 
 	//文件夹下元素
 	function items($path, $fetch=false){
-		$items = cache::get('dir_'.$this->path, function(){
-			return onedrive::dir($this->path);
-		}, config('cache_expire_time'));
+		//是否有缓存
+		list($this->time, $items) = cache('dir_'.$this->path);
+		//缓存失效或文件不存在，重新抓取
+		if( !is_array($items) || (TIME - $this->time) > config('cache_expire_time') || $fetch){
+			$items = onedrive::dir($path);
+			if(is_array($items)){
+				$this->time = TIME;
+				cache('dir_'.$path, $items);
+			} 
+		}
 		return $items;
 	}
 
@@ -183,12 +190,16 @@ class IndexController{
 	}
 
 	static function get_content($item){
-		$content = cache::get('content_'.$item['path'], function() use ($item){
+		$path =  $item['path'];
+
+		list($time, $content) = cache('content_'.$path);
+		if( is_null($content) || (TIME - $time) > config('cache_expire_time')){
 			$resp = fetch::get($item['downloadUrl']);
 			if($resp->http_code == 200){
-				return $resp->content;
+				$content = $resp->content;
+				cache('content_'.$path, $content);
 			}
-		}, config('cache_expire_time') );
+		}
 		return $content;
 	}
 
@@ -198,6 +209,8 @@ class IndexController{
 			return false;
 		}
 
+		cache('404_'.$this->path.$this->name, true);
+		
 		http_response_code(404);
 		view::load('404')->show();
 		die();
@@ -206,6 +219,14 @@ class IndexController{
 	function __destruct(){
 		if (!function_exists("fastcgi_finish_request")) {
 			return;
+		}
+		//后台刷新缓存
+		if((TIME - $this->time) > config('cache_refresh_time')){
+			fastcgi_finish_request();
+			$items = onedrive::dir($this->path);
+			if(is_array($items)){
+				cache('dir_'.$this->path, $items);
+			}
 		}
 	}
 }

@@ -75,7 +75,7 @@ function file_ico($item){
 	</ul>
 </div>
 <?php if($readme):?>
-<div class="mdui-typo mdui-shadow-3" style="padding: 20px;margin: 20px 0;">
+<div class="mdui-typo mdui-shadow-3" style="padding: 20px;margin: 20px; 0">
 	<div class="mdui-chip">
 	  <span class="mdui-chip-icon"><i class="mdui-icon material-icons">face</i></span>
 	  <span class="mdui-chip-title">README.md</span>
@@ -129,7 +129,7 @@ $(function () {
         $('li[data-sort]').sortElements(function (a, b) {
             var data_a = $(a).attr("data-sort-" + sort_type), data_b = $(b).attr("data-sort-" + sort_type);
             var rt = data_a.localeCompare(data_b, undefined, {numeric: true});
-            return (sort_order === "less") ? 0-rt : rt;
+            return (sort_order === "more") ? 0-rt : rt;
         });
 
         $(this).attr("data-order", sort_order_to).text("expand_" + sort_order_to);

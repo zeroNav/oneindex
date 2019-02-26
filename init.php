@@ -65,10 +65,26 @@ if (!function_exists('config')) {
 		}
 	}
 }
+/**
+ * config('name');
+ * config('name@file');
+ * config('@file');
+ */
+if (!function_exists('cache')) {
+	!defined('CACHE_PATH') && define('CACHE_PATH', ROOT . 'cache/');
+	function cache($key, $value = null) {
+		$file = CACHE_PATH . md5($key) . '.php';
+		if (is_null($value)) {
+			$cache = @include $file;
+			return (array)$cache;
+		} else {
+			file_put_contents($file, "<?php return " . var_export(array(TIME, $value), true) . ";", FILE_FLAGS);
+			return array(TIME, $value);
+		}
+	}
+}
 
-// cache
-define('CACHE_PATH', ROOT.'cache/');
-cache::$type = empty( config('cache_type') )?'secache':config('cache_type');
+
 
 
 if (!function_exists('db')) {
@@ -92,40 +108,6 @@ if (!function_exists('_')) {
 if (!function_exists('e')) {
 	function e($str) {
 		echo $str;
-	}
-}
-
-if (!function_exists('str_is')) {
-	function str_is($pattern, $value)
-	{
-		if (is_null($pattern)) {
-			$patterns = [];
-		}
-		$patterns = ! is_array($pattern) ? [$pattern] : $pattern;
-		if (empty($patterns)) {
-			return false;
-		}
-		foreach ($patterns as $pattern) {
-			if ($pattern == $value) {
-				return true;
-			}
-			$pattern = preg_quote($pattern, '#');
-			$pattern = str_replace('\*', '.*', $pattern);
-			if (preg_match('#^'.$pattern.'\z#u', $value) === 1) {
-				return true;
-			}
-		}
-		return false;
-	}
-}
-
-if (!function_exists('get_domain')) {
-	function get_domain($url=null)
-	{
-		if (is_null($url)) {
-			return $_SERVER['HTTP_HOST'];
-		}
-		return strstr(ltrim(strstr($url, '://'), '://'), '/', true);
 	}
 }
 

@@ -1,2 +1,2 @@
 # oneindex
-OneDrive Directory Index
+Onedrive Directory Index

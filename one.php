@@ -7,11 +7,27 @@ ini_set('memory_limit', '128M');
 
 class one{
 	static function cache_clear(){
-		cache::clear();
+		$dir=opendir(CACHE_PATH);
+		while ($file=readdir($dir)) {
+			@unlink(CACHE_PATH.$file);
+		}
 	}
 
 	static function cache_refresh(){
-		oneindex::refresh_cache(get_absolute_path(config('onedrive_root')));
+		self::_refresh_cache(get_absolute_path(config('onedrive_root')));
+	}
+
+	static function _refresh_cache($path){
+		echo $path.PHP_EOL;
+		$items = onedrive::dir($path);
+		if(is_array($items)){
+			cache('dir_'.$path, $items);
+		}
+		foreach((array)$items as $item){
+		    if($item['folder']){
+		        self::_refresh_cache($path.$item['name'].'/');
+		    }
+		}
 	}
 
 	static function token_refresh(){

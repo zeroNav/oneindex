@@ -6,7 +6,6 @@ class AdminController{
 	  'password' => 'oneindex',
 	  'style'=>'material',
 	  'onedrive_root' =>'',
-	  'cache_type'=>'secache',
 	  'cache_expire_time' => 3600,
 	  'cache_refresh_time' => 600,
 	  'root_path' => '?',
@@ -31,7 +30,7 @@ class AdminController{
 			setcookie('admin', md5(config('password').config('refresh_token')) );
 			return view::direct(get_absolute_path(dirname($_SERVER['SCRIPT_NAME'])).'?/admin/');
 		}
-		return view::load('login')->with('title', '系统管理');
+		return view::load('login');
 	}
 
 	function logout(){
@@ -40,59 +39,33 @@ class AdminController{
 	}
 
 	function settings(){
-		$message = false;
-
+		
 		if($_POST){
+
+			config('site_name',$_POST['site_name']);
+			config('style',$_POST['style']);
 			
-			if ($this->cache_exists($_POST['cache_type'])) {
-				$message = '保存成功';
-				config('cache_type', $_POST['cache_type']);
-			} else {
-				$message = '缓存类型不可用，请确认已经安装了该拓展。';
-				config('cache_type', 'secache');
-			}
+			config('onedrive_root',get_absolute_path($_POST['onedrive_root']));
 
-			config('site_name', $_POST['site_name']);
-			config('style', $_POST['style']);
-			config('onedrive_root', get_absolute_path($_POST['onedrive_root']));
-			config('onedrive_hide', $_POST['onedrive_hide']);
-			config('onedrive_hotlink', $_POST['onedrive_hotlink']);
-			config('cache_expire_time', intval($_POST['cache_expire_time']));
+			config('cache_expire_time',intval($_POST['cache_expire_time']));
+
 			$_POST['root_path'] = empty($_POST['root_path'])?'?':'';
-			config('root_path', $_POST['root_path']);
+			config('root_path',$_POST['root_path']);
 		}
-
 		$config = config('@base');
-
-		return view::load('settings')->with('config', $config)->with('message', $message);
-	}
-
-	/**
-	 * 判断缓存类型
-	 *
-	 * @param string $cache_type 缓存类型
-	 * @return void
-	 */
-	function cache_exists($cache_type){
-		// 需要判断环境的缓存类型
-		$_cache_type = [
-			'redis',
-			'memcache',
-		];
-
-		if (in_array($cache_type, $_cache_type)) {
-			return class_exists(ucfirst($cache_type));
-		}
-
-		return true;
+		return view::load('settings')->with('config', $config);
 	}
 
 	function cache(){
 		if(!is_null($_POST['clear'])){
-			cache::clear();
+			$dir=opendir(CACHE_PATH);
+			while ($file=readdir($dir)) {
+				@unlink(CACHE_PATH.$file);
+			}
 			$message = "清除缓存成功";
 		}elseif ( !is_null($_POST['refresh']) ){
-			oneindex::refresh_cache(get_absolute_path(config('onedrive_root')));
+			set_time_limit(0);
+			self::_refresh_cache(get_absolute_path(config('onedrive_root')));
 			$message = "重建缓存成功";
 		}
 		return view::load('cache')->with('message', $message);
@@ -109,6 +82,17 @@ class AdminController{
 		return view::load('images')->with('config', $config);;
 	}
 
+	static function _refresh_cache($path){
+		$items = onedrive::dir($path);
+		if(is_array($items)){
+			cache('dir_'.$path, $items);
+		}
+		foreach((array)$items as $item){
+		    if($item['folder']){
+		        self::_refresh_cache($path.$item['name'].'/');
+		    }
+		}
+	}
 
 	function show(){
 		if(!empty($_POST) ){
@@ -183,7 +167,7 @@ class AdminController{
 			$redirect_uri = 'http://'.$_SERVER['HTTP_HOST'].get_absolute_path(dirname($_SERVER['PHP_SELF']));
 		}else{
 			// 非https,调用ju.tn中转
-			$redirect_uri = 'https://oneindex.github.io/';
+			$redirect_uri = 'https://ju.tn/';
 		}
 		
 		$ru = "https://developer.microsoft.com/en-us/graph/quick-start?appID=_appId_&appName=_appName_&redirectUrl={$redirect_uri}&platform=option-php";
